@@ -41,7 +41,7 @@ conda activate chisel-osteo
 
 ## Results
 
-The notebook to fully replicate all the analysis can be executed with the command `jupyter` and then opening the file `analysis.ipynb`, or you can simply visualise all the analyses and plots online on GitHub by clicking on [analysis](./analysis.ipynb) without executing the script. When executing the notebook, the resulting plots are generated in this directory as PDF files.
+The notebook to fully replicate all the analysis can be executed with the command `jupyter-notebook` and then opening the file `analysis.ipynb`, or you can simply visualise all the analyses and plots online on GitHub by clicking on [analysis](./analysis.ipynb) without executing the script. When executing the notebook, the resulting plots are generated in this directory as PDF files.
 
 ## Contact
 
