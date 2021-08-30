@@ -45,28 +45,28 @@ def read_clones(f):
 
 
 def get_data():
-    hfiles = ['data/OS-10/calls.tsv',\
-            'data/OS-17/calls.tsv',\
-            'data/OS-8/calls.tsv',\
-            'data/OS-11/calls.tsv',\
-            'data/OS-47/OS-4-tib/calls.tsv',\
-            'data/OS-47/OS-7-tib/calls.tsv',\
-            'data/OS-47/OS-7-flank/calls.tsv',
-            'data/OS-1315/OS-113/calls.tsv',
-            'data/OS-1416/OS-114/calls.tsv',
-            'data/OS-1416/OS-116/calls.tsv']
+    hfiles = ['chisel/OS-10/calls.tsv',\
+            'chisel/OS-17/calls.tsv',\
+            'chisel/OS-8/calls.tsv',\
+            'chisel/OS-11/calls.tsv',\
+            'chisel/OS-47/OS-4-tib/calls.tsv',\
+            'chisel/OS-47/OS-7-tib/calls.tsv',\
+            'chisel/OS-47/OS-7-flank/calls.tsv',
+            'chisel/OS-1315/OS-113/calls.tsv',
+            'chisel/OS-1416/OS-114/calls.tsv',
+            'chisel/OS-1416/OS-116/calls.tsv']
     assert all(os.path.isfile(f) for f in hfiles)
 
-    cfiles = ['data/OS-10/mapping.tsv',\
-            'data/OS-17/mapping.tsv',\
-            'data/OS-8/mapping.tsv',\
-            'data/OS-11/mapping.tsv',\
-            'data/OS-47/OS-4-tib/mapping.tsv',\
-            'data/OS-47/OS-7-tib/mapping.tsv',\
-            'data/OS-47/OS-7-flank/mapping.tsv',
-            'data/OS-1315/OS-113/mapping.tsv',
-            'data/OS-1416/OS-114/mapping.tsv',
-            'data/OS-1416/OS-116/mapping.tsv']
+    cfiles = ['chisel/OS-10/mapping.tsv',\
+            'chisel/OS-17/mapping.tsv',\
+            'chisel/OS-8/mapping.tsv',\
+            'chisel/OS-11/mapping.tsv',\
+            'chisel/OS-47/OS-4-tib/mapping.tsv',\
+            'chisel/OS-47/OS-7-tib/mapping.tsv',\
+            'chisel/OS-47/OS-7-flank/mapping.tsv',
+            'chisel/OS-1315/OS-113/mapping.tsv',
+            'chisel/OS-1416/OS-114/mapping.tsv',
+            'chisel/OS-1416/OS-116/mapping.tsv']
     assert all(os.path.isfile(f) for f in cfiles)
 
     iswgd = {}

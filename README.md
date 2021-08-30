@@ -23,14 +23,14 @@ The following commands are sufficient to install all the requirements within a [
 curl -L https://repo.anaconda.com/miniconda/Miniconda2-latest-Linux-x86_64.sh > miniconda.sh
 rm -rf ./conda/
 bash miniconda.sh -b -f -p ./conda/
-conda/bin/conda create -n hatchet-pdx python=2.7 jupyter numpy pandas matplotlib seaborn scipy -y
-source conda/bin/activate hatchet-pdx
+conda/bin/conda create -n chisel-osteo python=2.7 jupyter numpy pandas matplotlib seaborn scipy -y
+source conda/bin/activate chisel-osteo
 ```
 
 Before any re-execution in a new session, please only run the following command from this folder:
 
 ```shell
-source conda/bin/activate hatchet-pdx
+source conda/bin/activate chisel-osteo
 ```
 
 Note that if `conda` is already available in your system, only these two commands are needed:
@@ -41,7 +41,7 @@ conda activate chisel-osteo
 
 ## Results
 
-The resulting plots are generated in this directory as PDF files after running the notebook but they can also simply be visualized online on GitHub by clicking on [analysis](./analysis.ipynb) without executing the script.
+The notebook to fully replicate all the analysis can be executed with the command `jupyter` and then opening the file `analysis.ipynb`, or you can simply visualise all the analyses and plots online on GitHub by clicking on [analysis](./analysis.ipynb) without executing the script. When executing the notebook, the resulting plots are generated in this directory as PDF files.
 
 ## Contact
 
