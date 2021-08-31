@@ -1,0 +1,209 @@
+---
+title: "OsteoCNV_1"
+author: "Matt Cannon"
+date: "6/25/21"
+output: knitrBootstrap::bootstrap_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      cache = TRUE,
+                      fig.height = 10,
+                      fig.width = 20,
+                      dpi = 300)
+```
+
+# Chisel Analysis of Single Cell CNV Data Using Matched Whole Genome Data From St. Jude
+
+Analysis of these samples was run at NCH due to data access restrictions.
+
+These documents are provided to document how the analyses were performed and not as a plug and play pipeline. 
+
+## Samples:
+
+
+Whole genome reference data:
+
+-   SJOS046149_G1.WholeGenome.bam
+-   SJOS046149_G2.WholeGenome.bam
+-   SJOS031478_G1.WholeGenome.bam
+
+Single cell CNV data: *In vitro* expanded samples
+
+-   S0113
+-   S0114
+-   S0116
+
+Single cell / reference matching:
+
+| s.s. cnv | Reference     |
+|----------|---------------|
+| S0113    | SJOS046149_Gx |
+| S0114    | SJOS031478_G1 |
+| S0116    | SJOS031478_G1 |
+
+
+## Load libraries
+
+```{r libraries, cache=FALSE, eval=TRUE}
+library(tidyverse)
+theme_set(theme_bw())
+theme_update(plot.title = element_text(hjust = 0.5))
+library(gt)
+```
+
+## Make up directory structure
+```{bash mkdirs, eval=FALSE}
+for directoryName in \
+  misc \
+  slurmOut \
+  rawData \
+  output \
+  output/figures \
+  output/counts \
+  output/vcfs \
+  output/vcfsCombined \
+  output/vcfs/phased \
+  output/vcfs/phased/merged \
+  output/vcfs/phased/merged2 \
+  output/chisel \
+  output/chisel/forPhylogeny/
+do
+  if [ ! -d ${directoryName} ]
+  then
+    mkdir -p ${directoryName}
+  fi 
+done
+```
+
+## Use mpileup to call variants on the reference data for phasing
+
+Shell script
+```{r, echo=FALSE, cache=FALSE}
+read_chunk("sbatchCmds/callVariants.sh", labels = "sbatchcallVariants")
+```
+```{bash sbatchcallVariants, eval=FALSE, cache=FALSE}
+```
+
+Execution
+```{bash makeVCFs, eval=FALSE}
+sbatch sbatchCmds/callVariants.sh
+```
+
+Shell script
+```{r, echo=FALSE, cache=FALSE}
+read_chunk("sbatchCmds/callVariants.sh", labels = "sbatchcallVariantsCombined")
+```
+```{bash sbatchcallVariantsCombined, eval=FALSE, cache=FALSE}
+```
+
+Execution
+```{bash makeCombinedVCFs, eval=FALSE}
+sbatch sbatchCmds/callVariantsCombined.sh
+```
+
+## Combine the replicate bam files and sort
+```{bash combineReps, eval=FALSE}
+samtools cat \
+  rawData/SJOS046149_G1.WholeGenome.bam \
+  rawData/SJOS046149_G2.WholeGenome.bam | \
+  samtools sort -O bam -m 2G -@ 10 - \
+    > rawData/SJOS046149_Gx.WholeGenome.bam
+```
+
+## Phase vcfs files with topmed
+
+### Prep files for upload
+
+Shell script
+```{r, echo=FALSE, cache=FALSE}
+read_chunk("sbatchCmds/phaseVars2.sh", labels = "sbatchphaseVars2")
+```
+```{bash sbatchphaseVars2, eval=FALSE, cache=FALSE}
+```
+
+Execution
+```{bash splitVcfs, eval=FALSE}
+sbatch sbatchCmds/phaseVars2.sh
+```
+
+### Unzip downloaded results
+```{bash unzip, eval=FALSE}
+# Manually typed the password into $pw before running
+for zipfile in *.zip
+do
+  unzip -P ${pw} ${zipfile}
+done
+```
+
+### Merge phased SNP calls
+
+Shell script
+```{r, echo=FALSE, cache=FALSE}
+read_chunk("sbatchCmds/mergedPhased2.sh", labels = "sbatchmergedPhased2")
+```
+```{bash sbatchmergedPhased2, eval=FALSE, cache=FALSE}
+```
+
+Execution
+```{bash mergePhased, eval=FALSE}
+sbatch sbatchCmds/mergedPhased2.sh
+```
+
+## Index bams using samtools index
+
+Shell script
+```{r, echo=FALSE, cache=FALSE}
+read_chunk("sbatchCmds/indexRef.sh", labels = "sbatchindexRef")
+```
+```{bash sbatchindexRef, eval=FALSE, cache=FALSE}
+```
+
+Execution
+```{bash indexRef, eval=FALSE}
+sbatch sbatchCmds/indexRef.sh
+```
+
+## Run chisel to call CNVs
+
+Shell script
+```{r, echo=FALSE, cache=FALSE}
+read_chunk("sbatchCmds/chiselb.sh", labels = "sbatchchisel")
+```
+```{bash sbatchchisel, eval=FALSE, cache=FALSE}
+```
+
+Execution
+```{bash chisel, eval=FALSE}
+sbatch sbatchCmds/chiselb.sh
+```
+
+### Refine the chisel ouput
+
+Shell script
+```{r, echo=FALSE, cache=FALSE}
+read_chunk("sbatchCmds/chisel_refineb.sh", labels = "sbatchchisel_refine")
+```
+```{bash sbatchchisel_refine, eval=FALSE, cache=FALSE}
+```
+
+Shell script
+```{r, echo=FALSE, cache=FALSE}
+read_chunk("sbatchCmds/chisel_refine3b.sh", labels = "sbatchchisel_refine3")
+```
+```{bash sbatchchisel_refine3, eval=FALSE, cache=FALSE}
+```
+
+Execution
+```{bash chiselRefine, eval=FALSE}
+sbatch sbatchCmds/chisel_refineb.sh
+sbatch sbatchCmds/chisel_refine3b.sh
+```
+
+We ultimately kept the output from refine3b with the -f 0.12 parameter
+
+```{r}
+sessionInfo()
+```
+
