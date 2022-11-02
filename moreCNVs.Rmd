@@ -230,6 +230,11 @@ perl scripts/varscanToMatrix_threshhold.pl \
 sbatch sbatchCmds/combineVarscan.sh
 ```
 
+### Read in patient info key
+```{r patientKey, eval=TRUE}
+patient_key <- read_tsv("misc/patientKey.txt")
+```
+
 ## Make plots of the CNV calls across all the samples
 ```{r plotVarscan, eval=TRUE}
 large_bin_size <- 100000
@@ -240,31 +245,16 @@ combined_data <- read_tsv("output/varscan/combined_calls.txt",
                 as.numeric()) %>%
     arrange(chr_num, bin) %>%
     mutate(order = seq_len(nrow(.)),
+           chr = fct_reorder(chr, chr_num),
            larger_bin = floor(bin / large_bin_size) * large_bin_size) %>%
     pivot_longer(cols = c(-chr, -bin, -order, -chr_num, -larger_bin),
                  names_to = "sample",
-                 values_to = "log_ratio")
-
-patient_key <- data.frame(
-    patient = unique(combined_data$sample) %>%
-        str_remove("_.+") %>%
-        str_replace("S0126", "SJOS030645") %>%
-        str_replace("S0127", "SJOS030645") %>%
-        str_replace("S0128", "SJOS030645") %>%
-        str_replace("S0114", "SJOS031478") %>%
-        str_replace("S0116", "SJOS031478") %>%
-        str_replace("S0113", "SJOS046149") %>%
-        str_replace("S0115", "SJOS046149"),
-    sample_type = unique(combined_data$sample) %>%
-        str_replace("^S0.+", "Xenograft") %>%
-        str_replace(".+_X.+", "Xenograft") %>%
-        str_replace(".+_D.+", "Diagnosis") %>%
-        str_replace(".+_M.+", "Metastasis") %>%
-        str_replace(".+_R.+", "Relapse"),
-    sample = unique(combined_data$sample))
+                 values_to = "log_ratio") %>%
+    filter(sample != "SJOS001111_M1")
 
 combined_data <- full_join(combined_data, patient_key)
 
+set.seed(3)
 chr_cols <- sample(rainbow(length(unique(combined_data$chr))),
                    length(unique(combined_data$chr)),
                    replace = FALSE)
@@ -272,27 +262,27 @@ chr_cols <- sample(rainbow(length(unique(combined_data$chr))),
 for (patient_name in unique(patient_key$patient)) {
     plot_name <- combined_data %>%
         filter(patient == patient_name) %>%
-        group_by(chr, sample, larger_bin) %>%
+        group_by(chr, sample, use_name, larger_bin) %>%
         summarize(log_ratio = median(log_ratio),
-                order = min(order),
-                .groups = "drop") %>%
+                  order = min(order),
+                  .groups = "drop") %>%
         ggplot(aes(x = order,
-                    y = log_ratio,
-                    color = chr)) +
+                   y = log_ratio,
+                   color = chr)) +
         geom_hline(yintercept = 0, color = "black") +
         geom_point(alpha = 0.5,
                     size = 0.5) +
         scale_color_manual(values = chr_cols) +
         labs(y = "Copy number log ratio",
              x = "") +
-        facet_wrap(~ sample, ncol = 1)
+        facet_wrap(~ use_name, ncol = 1)
 
     ggsave(paste0("output/figures/varscan",
-                 patient_name,
-                 ".png"),
+                  patient_name,
+                  ".png"),
            plot = plot_name,
            width = 20,
-           height = 8)
+           height = 12)
 }
 
 ## Take a look at regions commonly amplified/deleted across samples
@@ -344,27 +334,19 @@ high_chr3 <- combined_data %>%
 cnv_cor <- read_tsv("output/varscan/combined_calls.txt",
                      col_names = TRUE,
                      show_col_types = FALSE) %>%
+    select(-SJOS001111_M1) #only have one sample from this patient - not helpful
+
+names_list <- pull(patient_key, use_name, name = sample) %>%
+    as.list()
+names_list$chr <- "chr"
+names_list$bin <- "bin"
+colnames(cnv_cor) <- names_list[match(colnames(cnv_cor), names(names_list))]
+
+cnv_cor <-
+    cnv_cor %>%
     mutate(chr_bin = paste(chr, bin, sep = "_"), .keep = "unused") %>%
     column_to_rownames("chr_bin") %>%
     cor()
-
-patient_key <- data.frame(patient = rownames(cnv_cor) %>%
-                                str_remove("_.+") %>%
-                                str_replace("S0126", "SJOS030645") %>%
-                                str_replace("S0127", "SJOS030645") %>%
-                                str_replace("S0128", "SJOS030645") %>%
-                                str_replace("S0114", "SJOS031478") %>%
-                                str_replace("S0116", "SJOS031478") %>%
-                                str_replace("S0113", "SJOS046149") %>%
-                                str_replace("S0115", "SJOS046149"),
-                          sample_type = rownames(cnv_cor) %>%
-                                str_replace("^S0.+", "Xenograft") %>%
-                                str_replace(".+_X.+", "Xenograft") %>%
-                                str_replace(".+_D.+", "Diagnosis") %>%
-                                str_replace(".+_M.+", "Metastasis") %>%
-                                str_replace(".+_R.+", "Relapse"),
-                          sample_2 = rownames(cnv_cor)) %>%
-    column_to_rownames("sample_2")
 
 long_cor <-
     cnv_cor %>%
@@ -374,13 +356,13 @@ long_cor <-
                  names_to = "sample_2",
                  values_to = "cor") %>%
     left_join(patient_key %>%
-                rownames_to_column("sample_1") %>%
-                rename(patient_1 = patient) %>%
-                select(-sample_type)) %>%
+                rename(sample_1 = use_name,
+                       patient_1 = patient) %>%
+                select(-sample_type, -sample)) %>%
     left_join(patient_key %>%
-                rownames_to_column("sample_2") %>%
-                rename(patient_2 = patient) %>%
-                select(-sample_type)) %>%
+                rename(sample_2 = use_name,
+                       patient_2 = patient) %>%
+                select(-sample_type, -sample)) %>%
     mutate(within = patient_1 == patient_2,
            sample_1 = fct_reorder(sample_1, patient_1),
            sample_2 = fct_reorder(sample_2, patient_2)) %>%
@@ -412,7 +394,6 @@ for (sample_name in rownames(cnv_cor)) {
         clone_num <- clone_num + 1
     }
 }
-
 
 clone_table <-
     clone_table %>%
@@ -480,13 +461,13 @@ long_cor %>%
                 rename(sample_1 = sample_2,
                        clone_2 = clone_num)) %>%
     left_join(patient_key %>%
-                rownames_to_column("sample_1") %>%
-                rename(type_1 = sample_type) %>%
-                select(-patient)) %>%
+                rename(sample_1 = use_name,
+                       type_1 = sample_type) %>%
+                select(-patient, -sample)) %>%
     left_join(patient_key %>%
-                rownames_to_column("sample_2") %>%
-                rename(type_2 = sample_type) %>%
-                select(-patient)) %>%
+                rename(sample_2 = use_name,
+                       type_2 = sample_type) %>%
+                select(-patient, -sample)) %>%
     filter(patient_1 == patient_2 &
            clone_num == clone_2 &
            type_1 == "Xenograft" &
@@ -497,7 +478,8 @@ long_cor %>%
 
 ggplot(long_cor, aes(x = cor)) +
     geom_histogram(bins = 200) +
-    facet_wrap(~ within, ncol = 1)
+    facet_wrap(~ within, ncol = 1) +
+    geom_vline(xintercept = cor_cutoff, color = "red")
 
 # correlation of about 0.4 seems to be the upper bound of non-related samples
 
@@ -526,14 +508,14 @@ ggplot(long_cor, aes(x = paste(patient_1, sample_1),
     theme(axis.text.y = element_text(colour = text_col))
 
 
-patient_key <- patient_key %>%
-    rownames_to_column("sample_2") %>%
+patient_key2 <- patient_key %>%
+    rename(sample_2 = use_name) %>%
     full_join(clone_table) %>%
     column_to_rownames("sample_2") %>%
     rename(clone = clone_num,
            `sample type` = sample_type) %>%
-    relocate(`sample type`, .after = last_col())# %>%
-#    select(-`sample type`)
+    relocate(`sample type`, .after = last_col()) %>%
+    select(-sample)
 
 col_patient <- list(patient = c("#a6cee3",
                                 "#1f78b4",
@@ -565,15 +547,15 @@ col_patient <- list(patient = c("#a6cee3",
                               "#00D2FF",
                               "#FF005A"),
                     `sample type` = c("#a6cee3",
-                                    "#1f78b4",
-                                    "#b2df8a",
-                                    "#33a02c"))
+                                      "#1f78b4",
+                                      "#b2df8a",
+                                      "#33a02c"))
 
-names(col_patient$patient) <- patient_key$patient %>%
+names(col_patient$patient) <- patient_key2$patient %>%
     as.factor() %>%
     levels()
 
-names(col_patient$`sample type`) <- patient_key$`sample type` %>%
+names(col_patient$`sample type`) <- patient_key2$`sample type` %>%
     as_factor() %>%
     levels()
 
@@ -584,8 +566,11 @@ png("output/figures/cnv_correlation_heatmap.png",
     height = 3000,
     res = 300)
 pheatmap::pheatmap(cnv_cor,
-                   annotation_row = patient_key,
-                   annotation_col = patient_key,
+                   color = colorRampPalette(c("lemonchiffon",
+                                              "lightgoldenrod1",
+                                              "darkred"))(100),
+                   annotation_row = patient_key2,
+                   annotation_col = patient_key2,
                    annotation_colors = col_patient)
 dev.off()
 
